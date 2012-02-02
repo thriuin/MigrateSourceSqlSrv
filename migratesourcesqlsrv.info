@@ -1,1 +1,12 @@
-name = MigrateSourceSqlSrv
+name = "MigrateSourceSqlSrv"
+description = "Migrate Module Data Source for use with the Migrate Module"
+package = "Development"
+core = 7.x
+dependencies[] = migrate
+
+
+files[] = sqlsrvSource.inc
+
+version = "7.x-1.0a1"
+project = "MigrateSourceSqlSrv"
+
