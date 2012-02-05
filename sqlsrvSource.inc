@@ -6,18 +6,25 @@
  */
 
 /**
- * Implementation of MigrateSource, to handle imports from remote MS SQL Server db servers.
+ * Implementation of MigrateSource, to handle imports from remote Microsoft SQL Server 
+ * servers. This MigrateSource uses the Sql Server extenstion for PHP 5 from Microsoft and
+ * is compatible with PHP 5.2 and above.
  */
 class MigrateSourceSQLServer extends MigrateSource {
   
+  /**
+   * The MS SQL Server database instance
+   * 
+   * @var string 
+   */
   protected $host;
   
   /**
    * Array containing information for connecting to SQL Server:
-   *  server - The SQL Server instance to connect to
-   *  UID - Username to connect as
-   *  PWD - Password for logging in
-   *  database (optional) - Database to select after connecting
+   * - server: The SQL Server instance to connect to
+   * - UID: Username to connect as
+   * - PWD: Password for logging in
+   * - database: (optional) Database to select after connecting
    *
    * @var array
    */
@@ -32,17 +39,21 @@ class MigrateSourceSQLServer extends MigrateSource {
 
   /**
    * The SQL query from which to obtain data. Is a string.
+   * 
+   * @var string
    */
   protected $query;
 
   /**
    * The result object from executing the query - traversed to process the
    * incoming data.
+   * 
+   * @var resource
    */
   protected $result;
 
   /**
-   * Number of eligible rows processed so far (used for itemlimit checking)
+   * Number of eligible rows processed so far (used for item limit checking)
    *
    * @var int
    */
@@ -69,7 +80,23 @@ class MigrateSourceSQLServer extends MigrateSource {
   }
 
   /**
-   * Simple initialization.
+   * Constructs a MigrateSourceSqlSrv object.
+   * 
+   * @param string $serverName
+   *   Instance, or host, name for the MS SQl Server database
+   * @param array $configuration
+   *   SQL Server connection configuration information
+   * @param string $query
+   *   T-SQL select statement to query that migration data
+   * @param int $count_query
+   *   T-SQL select statement to get a count of the number of rows the data 
+   *   query will return.
+   * @param array $fields
+   *   An array of strings containing the names of the fields that will be
+   *   returned.
+   * @param array $options
+   *   An array of batch options
+   *   - batch_size: number of rows to return at a time. Default value if 500.
    */
   public function __construct($serverName, array $configuration, $query, $count_query,
       array $fields, array $options = array()) {
@@ -93,13 +120,15 @@ class MigrateSourceSQLServer extends MigrateSource {
 
   /**
    * Connect lazily to the DB server.
+   * 
+   * @return boolean
+   *   Returns TRUE if the connection was made, otherwise returns FALSE.
    */
   protected function connect() {
     if (!isset($this->connection)) {
       if (!extension_loaded('sqlsrv')) {
         throw new Exception(t('You must configure the sqlsrv extension in PHP.'));
       }
-
 
       $host = $this->host;
 
@@ -129,6 +158,9 @@ class MigrateSourceSQLServer extends MigrateSource {
 
   /**
    * Return a count of all available source records.
+   * 
+   * @return int
+   *   The number of available source records.
    */
   public function computeCount() {
     migrate_instrument_start('MigrateSourceSQLServer count');
@@ -148,7 +180,9 @@ class MigrateSourceSQLServer extends MigrateSource {
   }
 
   /**
-   * Implementation of Iterator::rewind() - called before beginning a foreach loop.
+   * Implements Iterator::rewind().
+   * 
+   * This method is called before beginning a foreach loop by the Migrate Module.
    */
   public function rewind() {
     $migration = Migration::currentMigration();
@@ -167,11 +201,10 @@ class MigrateSourceSQLServer extends MigrateSource {
       $keys[] = $field_name;
     }
 
-    /*
-     * Replace :criteria placeholder with idlist or highwater clauses. We
-     * considered supporting both but it is not worth the complexity. Run twice
-     * instead.
-     */
+     // Replace :criteria placeholder with idlist or highwater clauses. We
+     // considered supporting both but it is not worth the complexity. Run twice
+     // instead.
+     
     $idlist = $migration->getOption('idlist');
     if (isset($idlist)) {
       // TODO: Sanitize. not critical as this is admin supplied data in drush.
@@ -197,7 +230,7 @@ class MigrateSourceSQLServer extends MigrateSource {
     }
 
     migrate_instrument_start('sqlsrv_query');
-    $this->connect();
+
     if (!isset($this->connection)) {
       $this->connect();
     }
@@ -208,7 +241,9 @@ class MigrateSourceSQLServer extends MigrateSource {
   }
 
   /**
-   * Implementation of Iterator::next() - called at the bottom of the loop implicitly,
+   * Implementation of Iterator::next().
+   * 
+   * This method is called at the bottom of the loop implicitly,
    * as well as explicitly from rewind().
    */
   public function next() {
@@ -263,23 +298,15 @@ class MigrateSourceSQLServer extends MigrateSource {
    * Convenience function to return the next row of the result set as an
    * object, dealing with the difference between the end of the batch and the
    * end of all data.
+   * 
+   * @return boolean
+   * Returns TRUE if result was retrieved, otherwise returns FALSE.
    */
   public function getNextObject() {
-    migrate_instrument_start('mssql_fetch_object');
+    migrate_instrument_start('sqlsrv_fetch_object');
     $row = sqlsrv_fetch_object($this->result);
-    migrate_instrument_stop('mssql_fetch_object');
+    migrate_instrument_stop('sqlsrv_fetch_object');
 
-    // Might be totally out of data, or just out of this batch - request another
-    // batch and see
-//    if (!is_object($row)) {
-//      migrate_instrument_start('mssql_fetch_batch');
-//      mssql_fetch_batch($this->result);
-//      migrate_instrument_stop('mssql_fetch_batch');
-//
-//      migrate_instrument_start('mssql_fetch_object');
-//      $row = mssql_fetch_object($this->result);
-//      migrate_instrument_stop('mssql_fetch_object');
-//    }
     if (is_object($row)) {
       return $row;
     }

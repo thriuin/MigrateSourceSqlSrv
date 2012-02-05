@@ -1,6 +1,6 @@
-name = "MigrateSourceSqlSrv"
-description = "Migrate Module Data Source for use with the Migrate Module"
-package = "Development"
+name = MigrateSourceSqlSrv
+description = Migrate Module Data Source for use with the Migrate Module
+package = Development
 core = 7.x
 dependencies[] = migrate
 
